@@ -390,9 +390,9 @@ with st.sidebar:
         cache_anahtari = "-".join([f"{f.name}_{f.size}" for f in yuklenen_kanunlar])
         with st.spinner("Dosyalar işleniyor, ilk yüklemede 1-2 dakika sürebilir..."):
             vektor_db = veritabanini_olustur(yuklenen_kanunlar, cache_anahtari, MODEL_ADI)
-        st.success("✅ Veritabanı hazır")
+        st.success("✅  Analize  hazır")
 
-    st.caption("Bu araç yasal tavsiye vermez, ön bilgilendirme amaçlıdır.")
+    st.caption("Bu  sistem yasal tavsiye vermez, ön bilgilendirme amaçlıdır.")
 
 
 # ---------- MOD SEÇİMİ ----------
