@@ -342,7 +342,16 @@ def analiz_et(madde_metni, vektor_db, esik):
     Sözleşme Maddesi: {madde_metni}
     İlgili Kanunlar: {context}
     """
-    cevap = model.generate_content(prompt).text
+
+    try:
+        cevap = model.generate_content(
+            prompt,
+            request_options={"timeout": 60, "retry": None},
+        ).text
+    except Exception as hata:
+        print("GEMINI HATASI:", repr(hata), flush=True)
+        return False, "Şu anda analiz yapılamadı (servis yoğun ya da günlük kota dolmuş olabilir). Lütfen biraz sonra tekrar deneyin.", [], en_iyi_skor
+
     if ilgili_hukum_yok_mu(cevap):
         return False, "Bu madde için yüklenen kanunlarda ilgili bir hüküm bulunamadı.", [], en_iyi_skor
     return True, cevap, belgeler, en_iyi_skor
@@ -390,9 +399,9 @@ with st.sidebar:
         cache_anahtari = "-".join([f"{f.name}_{f.size}" for f in yuklenen_kanunlar])
         with st.spinner("Dosyalar işleniyor, ilk yüklemede 1-2 dakika sürebilir..."):
             vektor_db = veritabanini_olustur(yuklenen_kanunlar, cache_anahtari, MODEL_ADI)
-        st.success("✅  Analize  hazır")
+        st.success("✅ Analize hazır")
 
-    st.caption("Bu  sistem yasal tavsiye vermez, ön bilgilendirme amaçlıdır.")
+    st.caption("Bu sistem yasal tavsiye vermez, ön bilgilendirme amaçlıdır.")
 
 
 # ---------- MOD SEÇİMİ ----------
