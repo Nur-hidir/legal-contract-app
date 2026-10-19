@@ -4,13 +4,15 @@ import re
 import hashlib
 import tempfile
 import streamlit as st
-import google.generativeai as genai
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from sentence_transformers import SentenceTransformer
+
+# İçe Aktarma: Hugging Face modelini kullanmak için eklendi
+from langchain_huggingface import HuggingFaceEndpoint
 
 try:
     from docx import Document as WordBelgesi
@@ -21,8 +23,16 @@ except ImportError:
 from ingest import madde_bazli_parcala, sozlesme_maddelerine_ayir
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-3.8-flash')
+
+# Hugging Face Modelini Başlat
+hf_token = st.secrets.get("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
+model = HuggingFaceEndpoint(
+    repo_id="mistralai/Mistral-7B-Instruct-v0.3",
+    task="text-generation",
+    max_new_tokens=512,
+    temperature=0.3,
+    huggingfacehub_api_token=hf_token
+)
 
 TEMEL_MODEL = "intfloat/multilingual-e5-small"
 EGITILEN_MODEL = os.path.join("models", "e5-hukuk")
@@ -234,9 +244,9 @@ def metin_coz(veri):
 
 
 def docx_metni(veri):
-    belge = WordBelgesi(io.BytesIO(veri))
-    satirlar = [p.text for p in belge.paragraphs if p.text.strip()]
-    for tablo in belge.tables:
+    belg = WordBelgesi(io.BytesIO(veri))
+    satirlar = [p.text for p in belg.paragraphs if p.text.strip()]
+    for tablo in belg.tables:
         for satir in tablo.rows:
             hucreler = [h.text.strip() for h in satir.cells if h.text.strip()]
             if hucreler:
@@ -343,14 +353,12 @@ def analiz_et(madde_metni, vektor_db, esik):
     İlgili Kanunlar: {context}
     """
 
+    # HUGGING FACE API ÇAĞRISI BURAYA EKLENDİ
     try:
-        cevap = model.generate_content(
-            prompt,
-            request_options={"timeout": 60, "retry": None},
-        ).text
+        cevap = model.invoke(prompt)
     except Exception as hata:
-        print("GEMINI HATASI:", repr(hata), flush=True)
-        return False, "Şu anda analiz yapılamadı (servis yoğun ya da günlük kota dolmuş olabilir). Lütfen biraz sonra tekrar deneyin.", [], en_iyi_skor
+        print("HUGGING FACE HATASI:", repr(hata), flush=True)
+        return False, "Şu anda analiz yapılamadı (servis yoğun ya da API kotası dolmuş olabilir). Lütfen biraz sonra tekrar deneyin.", [], en_iyi_skor
 
     if ilgili_hukum_yok_mu(cevap):
         return False, "Bu madde için yüklenen kanunlarda ilgili bir hüküm bulunamadı.", [], en_iyi_skor
