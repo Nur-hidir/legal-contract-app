@@ -27,7 +27,7 @@ load_dotenv()
 # Groq Modelini Başlat (Llama 3.3 70B modeli çok hızlı ve Türkçede çok başarılıdır)
 groq_api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
 model = ChatGroq(
-    model="llama-3.3-70b-versatile",
+    model="openai/gpt-oss-120b",
     temperature=0.3,
     api_key=groq_api_key
 )
