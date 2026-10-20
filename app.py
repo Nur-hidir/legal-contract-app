@@ -357,7 +357,7 @@ def analiz_et(madde_metni, vektor_db, esik):
         cevap = yanit.content
     except Exception as hata:
         print("GROQ HATASI:", repr(hata), flush=True)
-               return False, f"Şu anda analiz yapılamadı ({type(hata).__name__}). Lütfen tekrar deneyin.", [], en_iyi_skor
+        return False, f"Şu anda analiz yapılamadı ({type(hata).__name__}). Lütfen tekrar deneyin.", [], en_iyi_skor
 
     if ilgili_hukum_yok_mu(cevap):
         return False, "Bu madde için yüklenen kanunlarda ilgili bir hüküm bulunamadı.", [], en_iyi_skor
