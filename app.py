@@ -21,6 +21,7 @@ except ImportError:
     DOCX_DESTEGI = False
 
 from ingest import madde_bazli_parcala, sozlesme_maddelerine_ayir
+from rules import kural_kontrol
 
 load_dotenv()
 
@@ -209,6 +210,16 @@ div[data-testid="stExpander"] summary * { color: var(--siyah) !important; }
 .rozet.kirmizi { color: #D32F2F !important; background: rgba(211, 47, 47, 0.1); border-color: rgba(211, 47, 47, 0.3); }
 .rozet.yesil { color: #2E7D32 !important; background: rgba(46, 125, 50, 0.1); border-color: rgba(46, 125, 50, 0.3); }
 .rozet.gri { color: var(--gri-koyu) !important; background: rgba(169, 179, 199, 0.2); border-color: rgba(169, 179, 199, 0.5); }
+
+.kural {
+    background: #FFFFFF; border: 1px solid var(--gri-acik); border-left-width: 4px;
+    border-radius: 10px; padding: 0.7rem 1rem; margin: 0.4rem 0 0.8rem;
+}
+.kural.aykiri { border-left-color: #D32F2F; }
+.kural.uyari { border-left-color: #ED9E00; }
+.kural .baslik { font-weight: 600; color: var(--siyah) !important; margin-bottom: 0.2rem; }
+.kural .metin { color: var(--gri-koyu) !important; font-size: 0.95rem; }
+.rozet.turuncu { color: #B26A00 !important; background: rgba(237, 158, 0, 0.12); border-color: rgba(237, 158, 0, 0.35); }
 </style>
 """
 st.markdown(STIL, unsafe_allow_html=True)
@@ -381,10 +392,24 @@ def kaynaklari_goster(belgeler, mesafe):
             st.caption(doc.page_content[:500])
 
 
+def kural_kutusu(bulgular):
+    for b in bulgular:
+        etiket = "Kanuna aykırı" if b["seviye"] == "aykiri" else "Dikkat"
+        st.markdown(
+            f'<div class="kural {b["seviye"]}">'
+            f'<div class="baslik">Kural kontrolü: {etiket} ({b["kanun"]}, {b["madde"]})</div>'
+            f'<div class="metin">{b["aciklama"]}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
 def mesaji_goster(msg):
     with st.chat_message(msg["role"]):
+        if msg.get("bulgular"):
+            kural_kutusu(msg["bulgular"])
         if msg["role"] == "assistant" and not msg.get("ilgili", True):
-            st.info(msg["content"])
+            if not msg.get("bulgular"):
+                st.info(msg["content"])
         else:
             st.markdown(msg["content"])
         if msg.get("belgeler"):
@@ -428,23 +453,25 @@ if mod == "Tek Madde":
         kullanici_mesaji = {"role": "user", "content": user_input}
         st.session_state.messages.append(kullanici_mesaji)
         mesaji_goster(kullanici_mesaji)
-
         with st.chat_message("assistant"):
             if not vektor_db:
                 st.error("Lütfen önce soldaki panelden kanun dosyası yükleyin.")
             else:
+                bulgular = kural_kontrol(user_input)
                 with st.spinner("İnceleniyor..."):
                     ilgili, cevap, belgeler, mesafe = analiz_et(user_input, vektor_db, ESIK)
+                if bulgular:
+                    kural_kutusu(bulgular)
                 if ilgili:
                     st.markdown(cevap)
                     kaynaklari_goster(belgeler, mesafe)
-                else:
+                elif not bulgular:
                     st.info(cevap)
                     if GELISTIRICI:
                         st.caption(f"En iyi mesafe: {mesafe:.3f}, eşik: {ESIK:.2f}")
                 st.session_state.messages.append({
                     "role": "assistant", "content": cevap, "ilgili": ilgili,
-                    "belgeler": belgeler, "mesafe": mesafe,
+                    "belgeler": belgeler, "mesafe": mesafe, "bulgular": bulgular,
                 })
 
 # ---------- TÜM SÖZLEŞME ----------
@@ -462,44 +489,50 @@ else:
         else:
             maddeler = sozlesme_maddelerine_ayir(sozlesme_dosyasini_oku(sozlesme_dosyasi))
             st.write(f"**{len(maddeler)} madde bulundu.**")
-
             ilerleme = st.progress(0)
             sonuclar = []
             for i, madde in enumerate(maddeler):
+                bulgular = kural_kontrol(madde)
                 ilgili, cevap, belgeler, mesafe = analiz_et(madde, vektor_db, ESIK)
+                kural_aykiri = any(b["seviye"] == "aykiri" for b in bulgular)
                 sonuclar.append({
                     "madde": madde,
                     "ilgili": ilgili,
                     "cevap": cevap,
                     "belgeler": belgeler,
                     "mesafe": mesafe,
-                    "riskli": ilgili and aykiri_mi(cevap),
+                    "bulgular": bulgular,
+                    "riskli": kural_aykiri or (ilgili and aykiri_mi(cevap)),
                 })
                 ilerleme.progress((i + 1) / len(maddeler))
-
             riskli = sum(1 for s in sonuclar if s["riskli"])
-            uygun = sum(1 for s in sonuclar if s["ilgili"] and not s["riskli"])
-            ilgisiz = sum(1 for s in sonuclar if not s["ilgili"])
+            dikkat = sum(1 for s in sonuclar if not s["riskli"] and s["bulgular"])
+            uygun = sum(1 for s in sonuclar if s["ilgili"] and not s["riskli"] and not s["bulgular"])
+            ilgisiz = sum(1 for s in sonuclar if not s["ilgili"] and not s["riskli"] and not s["bulgular"])
             st.markdown(
                 f'<div class="ozet">'
                 f'<span class="rozet kirmizi">🔴 {riskli} aykırı</span>'
+                f'<span class="rozet turuncu">🟠 {dikkat} dikkat</span>'
                 f'<span class="rozet yesil">🟢 {uygun} uygun</span>'
                 f'<span class="rozet gri">⚪ {ilgisiz} ilgili hüküm yok</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
-
             for s in sorted(sonuclar, key=lambda x: not x["riskli"]):
                 if s["riskli"]:
                     simge = "🔴"
+                elif s["bulgular"]:
+                    simge = "🟠"
                 elif s["ilgili"]:
                     simge = "🟢"
                 else:
                     simge = "⚪"
                 with st.expander(f"{simge} {s['madde'][:90]}..."):
                     st.caption(s["madde"])
+                    if s["bulgular"]:
+                        kural_kutusu(s["bulgular"])
                     if s["ilgili"]:
                         st.markdown(s["cevap"])
                         kaynaklari_goster(s["belgeler"], s["mesafe"])
-                    else:
+                    elif not s["bulgular"]:
                         st.info(s["cevap"])
