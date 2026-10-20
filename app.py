@@ -11,8 +11,8 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from sentence_transformers import SentenceTransformer
 
-# İçe Aktarma: Hugging Face modelini kullanmak için eklendi
-from langchain_huggingface import HuggingFaceEndpoint
+# İçe Aktarma: Groq modelini kullanmak için değiştirildi
+from langchain_groq import ChatGroq
 
 try:
     from docx import Document as WordBelgesi
@@ -24,14 +24,12 @@ from ingest import madde_bazli_parcala, sozlesme_maddelerine_ayir
 
 load_dotenv()
 
-# Hugging Face Modelini Başlat (Model yoğunluk hatası vermeyen Zephyr ile değiştirildi)
-hf_token = st.secrets.get("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
-model = HuggingFaceEndpoint(
-    repo_id="HuggingFaceH4/zephyr-7b-beta",
-    task="text-generation",
-    max_new_tokens=512,
+# Groq Modelini Başlat (Llama 3.3 70B modeli çok hızlı ve Türkçede çok başarılıdır)
+groq_api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+model = ChatGroq(
+    model="llama-3.3-70b-versatile",
     temperature=0.3,
-    huggingfacehub_api_token=hf_token
+    api_key=groq_api_key
 )
 
 TEMEL_MODEL = "intfloat/multilingual-e5-small"
@@ -353,12 +351,13 @@ def analiz_et(madde_metni, vektor_db, esik):
     İlgili Kanunlar: {context}
     """
 
-    # HUGGING FACE API ÇAĞRISI BURAYA EKLENDİ
+    # GROQ API ÇAĞRISI
     try:
-        cevap = model.invoke(prompt)
+        yanit = model.invoke(prompt)
+        cevap = yanit.content
     except Exception as hata:
-        print("HUGGING FACE HATASI:", repr(hata), flush=True)
-        return False, "Şu anda analiz yapılamadı (servis yoğun ya da API kotası dolmuş olabilir). Lütfen biraz sonra tekrar deneyin.", [], en_iyi_skor
+        print("GROQ HATASI:", repr(hata), flush=True)
+        return False, "Şu anda analiz yapılamadı (API hatası). Lütfen tekrar deneyin.", [], en_iyi_skor
 
     if ilgili_hukum_yok_mu(cevap):
         return False, "Bu madde için yüklenen kanunlarda ilgili bir hüküm bulunamadı.", [], en_iyi_skor
