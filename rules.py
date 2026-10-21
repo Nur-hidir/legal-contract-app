@@ -93,11 +93,6 @@ def kural_fazla_mesai(cumleler):
     kesin = re.compile(
         r"(ayrıca\s+)?ücret\s+talep\s+edemez|ek\s+(bir\s+)?ödeme\s+yapılmaz|ödenmez|karşılık\s+talep\s+edemez"
     )
-   def kural_fazla_mesai(cumleler):
-    bulgular = []
-    kesin = re.compile(
-        r"(ayrıca\s+)?ücret\s+talep\s+edemez|ek\s+(bir\s+)?ödeme\s+yapılmaz|ödenmez|karşılık\s+talep\s+edemez"
-    )
     for c in cumleler:
         if "telafi" in c:
             continue
@@ -116,6 +111,7 @@ def kural_fazla_mesai(cumleler):
                     "Zamlı ödeme hakkı yine de korunmalıdır.",
                 ))
     return _en_ciddi(bulgular)
+
 
 def kural_yillik_izin(cumleler):
     bulgular = []
