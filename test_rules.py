@@ -10,8 +10,9 @@ t4 = "Çalışan, çalıştığı süre boyunca yıllık ücretli izin hakkında
 t5 = "Çalışanın haftalık çalışma süresi 45 saattir ve haftada 5 iş günü olarak uygulanır."
 t6 = "Taraflar bu sözleşmeyi iki nüsha olarak düzenlemiş ve imzalamıştır."
 t7 = "İşveren, iş sözleşmesini sona erdirmeden önce çalışana iki hafta önceden yazılı bildirimde bulunur."
+t8 = "Telafi çalışması fazla sürelerle çalışma veya fazla çalışma sayılmaz, karşılığında fazla sürelerle çalışma veya fazla çalışma ücreti ödenmez."
 
-for ad, metin in [("t1", t1), ("t2", t2), ("t3", t3), ("t4", t4), ("t5", t5), ("t6", t6), ("t7", t7)]:
+for ad, metin in [("t1", t1), ("t2", t2), ("t3", t3), ("t4", t4), ("t5", t5), ("t6", t6), ("t7", t7), ("t8", t8)]:
     print(ad, seviyeler(metin))
 
 assert seviyeler(t1) == [("Madde 41", "aykiri")], seviyeler(t1)
@@ -21,4 +22,5 @@ assert seviyeler(t4) == [("Madde 53", "aykiri")], seviyeler(t4)
 assert seviyeler(t5) == [], seviyeler(t5)
 assert seviyeler(t6) == [], seviyeler(t6)
 assert seviyeler(t7) == [("Madde 17", "uyari")], seviyeler(t7)
+assert seviyeler(t8) == [], seviyeler(t8)
 print("TÜM TESTLER GEÇTİ")
